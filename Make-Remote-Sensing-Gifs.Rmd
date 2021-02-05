@@ -1,0 +1,25 @@
+---
+title: "Making PNW SST Gifs"
+author: "EE Holmes"
+date: "4 February 2021"
+output:
+  html_document:
+    theme: cosmo
+    highlight: textmate
+    toc: true
+    toc_float: true
+    toc_depth: 3
+---
+
+# Steps
+
+This shows how to download remote sensing images of SST, add headers, and make a gif from the images. The gif can then be used to make a mp4 movie.
+
+
+```{r child="Download_pngs.Rmd", eval=TRUE}
+```
+
+
+```{r child="Make_a_gif.Rmd", eval=TRUE}
+```
+

@@ -1,0 +1,162 @@
+---
+title: "Creating a 4 x 4 gif of satellite images"
+author: "EE Holmes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+## Creating gifs of satellite images
+
+The script downloads images from the CoastWatch ERDDAP server and then creates a gif using ImageMagick.
+
+Load the packages.  
+```{r load_packages}
+library(ggplot2) # plotting
+library(dplyr) # for %>% pipe
+library(purrr) # for map()
+library(magick) # for image_* functions
+library(stringr) # for the header on images
+```
+
+
+
+# get the names of each file
+imgs=list()
+for(j in 1:4){
+  year=as.character(years)[j]
+  fil_dir <- paste0("pngs/",tag,"_pngs_",year)
+  imgs[[j]] = list.files(path = fil_dir, pattern = "*.png", full.names = TRUE)
+}
+
+# Then make the gif 4x4
+img = c()
+imgleg = image_read("pngs/legend.png")
+for(i in 1:length(imgs[[1]])){
+  theimgs=list()
+  for(j in 1:4){
+    theimgs[[j]]=image_read(imgs[[j]][i])
+    theimgs[[j]] = image_crop(theimgs[[j]], geometry_area(width = 300, height = 332, x_off = 7, y_off = 0))
+  }
+  imtop <- image_append(image_join(theimgs[[1]],theimgs[[2]]))
+  imbot <- image_append(image_join(theimgs[[3]],theimgs[[4]]))
+#  imtop <- image_append(image_join(theimgs[[1]],theimgs[[2]],theimgs[[3]],theimgs[[4]],theimgs[[5]]))
+#  imbot <- image_append(image_join(theimgs[[6]],theimgs[[7]],theimgs[[8]],theimgs[[9]],theimgs[[10]]))
+  im <- magick::image_append(image_join(imtop, imbot, imgleg), stack=TRUE)
+  img <- image_join(img, im)
+}
+imggif = image_animate(img, fps=4, loop=1)
+image_write(imggif, paste0("gifs/",tag,"_",years[1],"-",years[4],".gif"))
+
+# 1981:2017 data
+# Make legend
+require(png)
+require(raster)
+require(ggplot2)
+require(grid)
+img <- readPNG(fil) #read in last image
+dim_img <- dim(img)
+footersize <- 100 #will be different for different pngs
+img_height <- dim_img[1]
+img_width <- dim_img[2]
+png("pngs/sst_legend.png",width=img_width, height=footersize)
+grid.raster(img[(img_height-footersize):img_height, 1:img_width, ])
+dev.off()
+
+
+# Then make the gif 
+for(year in c(1987,1997,2007)){
+  years=year:(year+9)
+  # get the names of each file
+  imgs=list()
+  for(j in 1:10){
+    year=as.character(years)[j]
+    fil_dir <- paste0("pngs/",tag,"_pngs_",year)
+    imgs[[j]] = list.files(path = fil_dir, pattern = "*.png", full.names = TRUE)
+  }
+img = c()
+imgleg = image_read("pngs/sst_legend.png")
+for(i in 1:length(imgs[[1]])){
+  theimgs=list()
+  for(j in 1:10){
+    theimgs[[j]]=image_read(imgs[[j]][i])
+    theimgs[[j]] = image_crop(theimgs[[j]], geometry_area(width = 300, height = 332, x_off = 7, y_off = 0))
+  }
+  imtop <- image_append(image_join(theimgs[[1]],theimgs[[2]],theimgs[[3]],theimgs[[4]],theimgs[[5]]))
+  imbot <- image_append(image_join(theimgs[[6]],theimgs[[7]],theimgs[[8]],theimgs[[9]],theimgs[[10]]))
+  im <- magick::image_append(image_join(imtop, imbot, imgleg), stack=TRUE)
+  img <- image_join(img, im)
+}
+imggif = image_animate(img, fps=4, loop=1)
+image_write(imggif, paste0("gifs/",tag,"_",years[1],"-",years[10],".gif"))
+}
+
+# Now upload gifs to https://ezgif.com/gif-to-mp4
+
+## More complicated example
+
+I wanted to merge 4 images from 4 years and have a legend at the bottom.  Here's how I did it using ImageMagick to make a big gif (13M) and then uploaded that to ezgif.com to make a much smaller movie.
+
+<div style="text-align:center" markdown="1">
+
+<video width="400" controls>
+  <source src="Kochin_SST_2014-17_4x4.mp4" type="video/mp4">
+  Your browser does not support HTML5 video.
+</video>
+
+## The code
+
+Here is the code I used
+```{r make_4x4_movie}
+# get the names of each file
+imgs=list()
+for(j in 1:4){
+  year=as.character(2014:2017)[j]
+  fil_dir <- paste0("india_sst_pngs_",year)
+  imgs[[j]] = list.files(path = fil_dir, pattern = "*.png", full.names = T)
+}
+
+# Then make the gif
+img = c()
+imgleg = image_read("legend.png")
+  for(i in 1:length(imgs[[1]])){
+    theimgs=list()
+    for(j in 1:4){
+      theimgs[[j]]=image_read(imgs[[j]][i])
+      theimgs[[j]] = image_crop(theimgs[[j]], geometry_area(width = 230, height = 332, x_off = 28, y_off = 0))
+    }
+    imtop <- image_append(image_join(theimgs[[1]],theimgs[[2]]))
+    imbot <- image_append(image_join(theimgs[[3]],theimgs[[4]]))
+    im <- magick::image_append(image_join(imtop, imbot, imgleg), stack=TRUE)
+    img <- image_join(img, im)
+  }
+imggif = image_animate(img, fps=4, loop=1)
+image_write(imggif, "Kochin_SST_2014-17_4x4.gif")
+```
+
+I could also do the same with animation
+
+```{r animation_4x4_movie}
+# you can use animation package but the default settings give a low quality movie
+library(animation)
+library(magick)
+imgleg = image_read("legend.png")
+saveVideo({
+  for(i in 1:length(img14)){
+    theimgs=list()
+    for(j in 1:4){
+      theimgs[[j]]=image_read(imgs[[j]][i])
+      theimgs[[j]] = image_crop(theimgs[[j]], geometry_area(width = 230, height = 332, x_off = 28, y_off = 0))
+    }
+    imtop <- image_append(image_join(theimgs[[1]],theimgs[[2]]))
+    imbot <- image_append(image_join(theimgs[[3]],theimgs[[4]]))
+    im <- magick::image_append(image_join(imtop, imbot, imgleg), stack=TRUE)
+    plot(as.raster(im))
+  }
+  },
+video.name="Kochin_SST_2014-17.mp4"
+)
+```
+
